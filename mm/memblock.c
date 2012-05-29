@@ -234,18 +234,7 @@ static int __init_memblock memblock_double_array(struct memblock_type *type,
 		new_array = kmalloc(new_size, GFP_KERNEL);
 		addr = new_array ? __pa(new_array) : 0;
 	} else {
-		/* only exclude range when trying to double reserved.regions */
-		if (type != &memblock.reserved)
-			new_area_start = new_area_size = 0;
-
-		addr = memblock_find_in_range(new_area_start + new_area_size,
-						memblock.current_limit,
-						new_alloc_size, PAGE_SIZE);
-		if (!addr && new_area_size)
-			addr = memblock_find_in_range(0,
-					min(new_area_start, memblock.current_limit),
-					new_alloc_size, PAGE_SIZE);
-
+		addr = memblock_find_in_range(0, MEMBLOCK_ALLOC_ACCESSIBLE, new_size, sizeof(phys_addr_t));
 		new_array = addr ? __va(addr) : 0;
 	}
 	if (!addr) {
