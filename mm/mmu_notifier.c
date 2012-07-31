@@ -37,24 +37,24 @@ static struct srcu_struct srcu;
 void __mmu_notifier_release(struct mm_struct *mm)
 {
 	struct mmu_notifier *mn;
-	struct hlist_node *node;
-	int id;
+	struct hlist_node *n;
 
 	/*
-	 * SRCU here will block mmu_notifier_unregister until
+	 * RCU here will block mmu_notifier_unregister until
 	 * ->release returns.
 	 */
-	id = srcu_read_lock(&srcu);
-	hlist_for_each_entry_rcu(mn, node, &mm->mmu_notifier_mm->list, hlist)
+	rcu_read_lock();
+	hlist_for_each_entry_rcu(mn, n, &mm->mmu_notifier_mm->list, hlist)
 		/*
-		 * If ->release runs before mmu_notifier_unregister it must be
-		 * handled, as it's the only way for the driver to flush all
-		 * existing sptes and stop the driver from establishing any more
-		 * sptes before all the pages in the mm are freed.
+		 * if ->release runs before mmu_notifier_unregister it
+		 * must be handled as it's the only way for the driver
+		 * to flush all existing sptes and stop the driver
+		 * from establishing any more sptes before all the
+		 * pages in the mm are freed.
 		 */
 		if (mn->ops->release)
 			mn->ops->release(mn, mm);
-	srcu_read_unlock(&srcu, id);
+	rcu_read_unlock();
 
 	spin_lock(&mm->mmu_notifier_mm->lock);
 	while (unlikely(!hlist_empty(&mm->mmu_notifier_mm->list))) {
@@ -304,23 +304,18 @@ void mmu_notifier_unregister(struct mmu_notifier *mn, struct mm_struct *mm)
 		 * SRCU here will force exit_mmap to wait for ->release to
 		 * finish before freeing the pages.
 		 */
-		int id;
+		rcu_read_lock();
 
-		id = srcu_read_lock(&srcu);
 		/*
 		 * exit_mmap will block in mmu_notifier_release to guarantee
 		 * that ->release is called before freeing the pages.
 		 */
 		if (mn->ops->release)
 			mn->ops->release(mn, mm);
-		srcu_read_unlock(&srcu, id);
+		rcu_read_unlock();
 
 		spin_lock(&mm->mmu_notifier_mm->lock);
-		/*
-		 * Can not use list_del_rcu() since __mmu_notifier_release
-		 * can delete it before we hold the lock.
-		 */
-		hlist_del_init_rcu(&mn->hlist);
+		hlist_del_rcu(&mn->hlist);
 		spin_unlock(&mm->mmu_notifier_mm->lock);
 	}
 
