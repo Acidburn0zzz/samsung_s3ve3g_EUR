@@ -27,21 +27,12 @@
 			vcc_i2c-supply = <&pm8226_lvs1>;
 			synaptics,reset-gpio = <&msmgpio 16 0x00>;
 			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
-			synaptics,display-coords = <0 0 1079 1919>;
+			synaptics,button-map = <139 102 158>;
+			synaptics,fw-image-name = "PR1468813.img";
 			synaptics,i2c-pull-up;
 			synaptics,power-down;
 			synaptics,disable-gpios;
 		};
-	};
-
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "synaptics_rmi4_i2c";
-		qcom,disp-maxx = <1079>;
-		qcom,disp-maxy = <1919>;
-		qcom,panel-maxx = <1079>;
-		qcom,panel-maxy = <2084>;
-		qcom,key-codes = <158 139 102 217>;
 	};
 
 	i2c@f9925000 { /* BLSP1 QUP3 */
@@ -51,12 +42,12 @@
 			qcom,irq-gpio = <&msmgpio 21 0x00>;
 			qcom,dis-gpio = <&msmgpio 20 0x00>;
 			qcom,clk-src = "BBCLK2";
-			qcom,clk-en-gpio = <&msmgpio 0 0x00>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <21 0>;
 			qcom,clk-gpio = <&pm8226_gpios 3 0>;
 		};
 	};
+
 
 	gpio_keys {
 		compatible = "gpio-keys";
@@ -494,10 +485,9 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_jdi_1080_vid>;
-	qcom,platform-enable-gpio = <&msmgpio 109 0>;
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_720_vid>;
 };
 
-&dsi_jdi_1080_vid {
+&dsi_nt35590_720_vid {
 	qcom,cont-splash-enabled;
 };
