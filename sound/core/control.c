@@ -287,18 +287,10 @@ static bool snd_ctl_remove_numid_conflict(struct snd_card *card,
 					  unsigned int count)
 {
 	struct snd_kcontrol *kctl;
-<<<<<<< HEAD
-
 	/* Make sure that the ids assigned to the control do not wrap around */
 	if (card->last_numid >= UINT_MAX - count)
 		card->last_numid = 0;
 
-=======
-	/* Make sure that the ids assigned to the control do not wrap around */
-	if (card->last_numid >= UINT_MAX - count)
-		card->last_numid = 0;
-	
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 	list_for_each_entry(kctl, &card->controls, list) {
 		if (kctl->id.numid < card->last_numid + 1 + count &&
 		    kctl->id.numid + kctl->count > card->last_numid + 1) {
@@ -912,15 +904,9 @@ static int snd_ctl_elem_write(struct snd_card *card, struct snd_ctl_file *file,
 			result = kctl->put(kctl, control);
 		}
 		if (result > 0) {
-<<<<<<< HEAD
-			struct snd_ctl_elem_id id = control->id;
-			up_read(&card->controls_rwsem);
-			snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_VALUE, &id);
-=======
 			struct snd_ctl_elem_id id = control->id;			
 			up_read(&card->controls_rwsem);
-			snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_VALUE, &id);			
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
+			snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_VALUE, &id);
 			return 0;
 		}
 	}
@@ -1012,11 +998,7 @@ static int snd_ctl_elem_unlock(struct snd_ctl_file *file,
 
 struct user_element {
 	struct snd_ctl_elem_info info;
-<<<<<<< HEAD
-	struct snd_card *card;
-=======
 	struct snd_card *card;	
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 	void *elem_data;		/* element data */
 	unsigned long elem_data_size;	/* size of element data in bytes */
 	void *tlv_data;			/* TLV data */
@@ -1062,11 +1044,7 @@ static int snd_ctl_elem_user_get(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&ue->card->user_ctl_lock);
 	memcpy(&ucontrol->value, ue->elem_data, ue->elem_data_size);
-<<<<<<< HEAD
-	mutex_unlock(&ue->card->user_ctl_lock);
-=======
 	mutex_unlock(&ue->card->user_ctl_lock);	
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 	return 0;
 }
 
@@ -1075,11 +1053,7 @@ static int snd_ctl_elem_user_put(struct snd_kcontrol *kcontrol,
 {
 	int change;
 	struct user_element *ue = kcontrol->private_data;
-<<<<<<< HEAD
 
-=======
-	
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 	mutex_lock(&ue->card->user_ctl_lock);
 	change = memcmp(&ucontrol->value, ue->elem_data, ue->elem_data_size) != 0;
 	if (change)
@@ -1104,11 +1078,7 @@ static int snd_ctl_elem_user_tlv(struct snd_kcontrol *kcontrol,
 		new_data = memdup_user(tlv, size);
 		if (IS_ERR(new_data))
 			return PTR_ERR(new_data);
-<<<<<<< HEAD
 		mutex_lock(&ue->card->user_ctl_lock);
-=======
-		mutex_lock(&ue->card->user_ctl_lock);		
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 		change = ue->tlv_data_size != size;
 		if (!change)
 			change = memcmp(ue->tlv_data, new_data, size);
@@ -1206,10 +1176,7 @@ static int snd_ctl_elem_add(struct snd_ctl_file *file,
 
 	if (replace) {
 		err = snd_ctl_remove_user_ctl(file, &info->id);
-<<<<<<< HEAD
-=======
 		if (err)
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 			return err;
 	}
 
@@ -1377,11 +1344,7 @@ static int snd_ctl_tlv_ioctl(struct snd_ctl_file *file,
 		}
 		err = kctl->tlv.c(kctl, op_flag, tlv.length, _tlv->tlv);
 		if (err > 0) {
-<<<<<<< HEAD
 			struct snd_ctl_elem_id id = kctl->id;
-=======
-			struct snd_ctl_elem_id id = kctl->id;			
->>>>>>> e406978... ASoC: Update from G800HXXU1BOI2-LL
 			up_read(&card->controls_rwsem);
 			snd_ctl_notify(card, SNDRV_CTL_EVENT_MASK_TLV, &id);
 			return 0;
