@@ -255,10 +255,11 @@ static int kgsl_drv_full_cache_threshold_store(struct device *dev,
 					 const char *buf, size_t count)
 {
 	int ret;
-	unsigned int thresh;
-	ret = sscanf(buf, "%d", &thresh);
-	if (ret != 1)
-		return count;
+	unsigned int thresh = 0;
+
+	ret = kgsl_sysfs_store(buf, &thresh);
+	if (ret)
+		return ret;
 
 	kgsl_driver.full_cache_threshold = thresh;
 
@@ -390,7 +391,7 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 static int kgsl_page_alloc_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_DONTEXPAND;
+	return VM_RESERVED | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
@@ -412,7 +413,7 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND;
+	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 /*
@@ -580,8 +581,12 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	page_size = (align >= ilog2(SZ_64K) && size >= SZ_64K)
 			? SZ_64K : PAGE_SIZE;
-	/* update align flags for what we actually use */
-	if (page_size != PAGE_SIZE)
+	/*
+	 * The alignment cannot be less than the intended page size - it can be
+	 * larger however to accomodate hardware quirks
+	 */
+
+	if (ilog2(align) < page_size)
 		kgsl_memdesc_set_align(memdesc, ilog2(page_size));
 
 	/*
