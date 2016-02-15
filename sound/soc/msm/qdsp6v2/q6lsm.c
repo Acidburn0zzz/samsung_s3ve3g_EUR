@@ -26,12 +26,12 @@
 #include <linux/atomic.h>
 #include <sound/apr_audio-v2.h>
 #include <sound/lsm_params.h>
+#include <sound/q6core.h>
 #include <sound/q6lsm.h>
 #include <asm/ioctls.h>
 #include <mach/memory.h>
 #include <mach/debug_mm.h>
 #include "audio_acdb.h"
-#include "q6core.h"
 
 #define APR_TIMEOUT	(5 * HZ)
 #define LSM_CAL_SIZE	4096
@@ -817,7 +817,13 @@ int q6lsm_snd_model_buf_alloc(struct lsm_client *client, uint32_t len)
 			goto fail;
 		}
 		memset(client->sound_model.data, 0, len);
-		client->sound_model.size = len;
+		client->lsm_cal_phy_addr = (pad_zero +
+					    client->sound_model.phys +
+					    client->sound_model.size);
+		client->lsm_cal_size = lsm_cal.cal_size;
+		memcpy((client->sound_model.data + pad_zero +
+			client->sound_model.size),
+			(uint32_t *)lsm_cal.cal_kvaddr, lsm_cal.cal_size);
 	} else {
 		rc = -EBUSY;
 		goto fail;

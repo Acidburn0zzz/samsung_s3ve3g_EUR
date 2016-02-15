@@ -434,7 +434,7 @@ int adm_get_params(int port_id, uint32_t module_id, uint32_t param_id,
 	}
 	if ((params_data) && (ARRAY_SIZE(adm_get_parameters) >=
 		(1+adm_get_parameters[0])) &&
-		(params_length/sizeof(int) >=
+		(params_length/sizeof(uint32_t) >=
 		adm_get_parameters[0])) {
 		for (i = 0; i < adm_get_parameters[0]; i++)
 			params_data[i] = adm_get_parameters[1+i];
@@ -645,16 +645,23 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			/* is big enough and has a valid param size */
 			if ((payload[0] == 0) && (data->payload_size >
 				(4 * sizeof(*payload))) &&
-				(data->payload_size/sizeof(*payload)-4 >=
+				(data->payload_size - 4 >=
 				payload[3]) &&
 				(ARRAY_SIZE(adm_get_parameters)-1 >=
 				payload[3])) {
-				adm_get_parameters[0] = payload[3];
+				adm_get_parameters[0] = payload[3] /
+							sizeof(uint32_t);
+				/*
+				 * payload[3] is param_size which is
+				 * expressed in number of bytes
+				 */
 				pr_debug("%s: GET_PP PARAM:received parameter length: 0x%x\n",
 					__func__, adm_get_parameters[0]);
 				/* storing param size then params */
-				for (i = 0; i < payload[3]; i++)
-					adm_get_parameters[1+i] = payload[4+i];
+				for (i = 0; i < payload[3] /
+						sizeof(uint32_t); i++)
+					adm_get_parameters[1+i] =
+							payload[4+i];
 			} else {
 				adm_get_parameters[0] = -1;
 				pr_err("%s: GET_PP_PARAMS failed, setting size to %d\n",
@@ -1196,6 +1203,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		open.topology_id = topology;
 		if ((open.topology_id == VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
 			(open.topology_id == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
+			(open.topology_id == VPM_TX_DM_RFECNS_COPP_TOPOLOGY) ||
 		   	 (open.topology_id == VPM_TX_SM_LVVE_COPP_TOPOLOGY) ||
 			/* LVVE for Barge-in */
 			(open.topology_id == 0x1000BFF0) ||

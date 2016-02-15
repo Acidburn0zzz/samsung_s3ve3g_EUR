@@ -75,6 +75,14 @@ static bool is_qchat(struct msm_voice *pqchat)
 		return false;
 }
 
+static bool is_vowlan(struct msm_voice *pvowlan)
+{
+	if (pvowlan == &voice_info[VOWLAN_SESSION_INDEX])
+		return true;
+	else
+		return false;
+}
+
 static uint32_t get_session_id(struct msm_voice *pvoc)
 {
 	uint32_t session_id = 0;
@@ -85,6 +93,8 @@ static uint32_t get_session_id(struct msm_voice *pvoc)
 		session_id = voc_get_session_id(VOICE2_SESSION_NAME);
 	else if (is_qchat(pvoc))
 		session_id = voc_get_session_id(QCHAT_SESSION_NAME);
+	else if (is_vowlan(pvoc))
+		session_id = voc_get_session_id(VOWLAN_SESSION_NAME);
 	else
 		session_id = voc_get_session_id(VOICE_SESSION_NAME);
 
@@ -133,6 +143,10 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	} else if (!strncmp("QCHAT", substream->pcm->id, 5)) {
 		voice = &voice_info[QCHAT_SESSION_INDEX];
 		pr_debug("%s: Open QCHAT Substream Id=%s\n",
+			 __func__, substream->pcm->id);
+	} else if (!strncmp("VoWLAN", substream->pcm->id, 6)) {
+		voice = &voice_info[VOWLAN_SESSION_INDEX];
+		pr_debug("%s: Open VoWLAN Substream Id=%s\n",
 			 __func__, substream->pcm->id);
 	} else {
 		voice = &voice_info[VOICE_SESSION_INDEX];
@@ -532,6 +546,7 @@ static int msm_voice_tty_mode_put(struct snd_kcontrol *kcontrol,
 	voc_set_tty_mode(voc_get_session_id(VOICE_SESSION_NAME), tty_mode);
 	voc_set_tty_mode(voc_get_session_id(VOICE2_SESSION_NAME), tty_mode);
 	voc_set_tty_mode(voc_get_session_id(VOLTE_SESSION_NAME), tty_mode);
+	voc_set_tty_mode(voc_get_session_id(VOWLAN_SESSION_NAME), tty_mode);
 
 	return 0;
 }
@@ -565,12 +580,28 @@ static int msm_sec_dha_put(struct snd_kcontrol *kcontrol,
 
 	int dha_mode = ucontrol->value.integer.value[0];
 	int dha_select = ucontrol->value.integer.value[1];
+#if defined(CONFIG_AUDIO_DUAL_CP) || defined(CONFIG_MACH_KLTE_CTC) \
+	|| defined(CONFIG_MACH_KLTE_CMCCDUOS) || defined(CONFIG_MACH_KLTE_CUDUOS) \
+	|| defined(CONFIG_MACH_MEGA23GEUR_OPEN)  || defined(CONFIG_MACH_MS01_EUR_3G) \
+	|| defined(CONFIG_MACH_MEGA2LTE_KTT) || defined(CONFIG_MACH_ATLANTIC3GEUR_OPEN) \
+	|| defined(CONFIG_MACH_MS01_EUR_LTE) || defined(CONFIG_MACH_MS01_KOR_LTE) || defined(CONFIG_DSDA_VIA_UART) || defined(CONFIG_MACH_KLTE_LTNDUOS)
+	uint32_t session_id = ucontrol->value.integer.value[14];
+#endif
 	short dha_param[12] = {0,};
 	for (i = 0; i < 12; i++) {
 		dha_param[i] = (short)ucontrol->value.integer.value[2+i];
 		pr_debug("msm_dha_put : param - %d\n", dha_param[i]);
 	}
 
+#if defined(CONFIG_AUDIO_DUAL_CP) || defined(CONFIG_MACH_KLTE_CTC) \
+	|| defined(CONFIG_MACH_KLTE_CMCCDUOS) || defined(CONFIG_MACH_KLTE_CUDUOS) \
+	|| defined(CONFIG_MACH_MEGA23GEUR_OPEN) || defined(CONFIG_MACH_MS01_EUR_3G) \
+	|| defined(CONFIG_MACH_MEGA2LTE_KTT) || defined(CONFIG_MACH_ATLANTIC3GEUR_OPEN) \
+	|| defined(CONFIG_MACH_MS01_EUR_LTE) || defined(CONFIG_MACH_MS01_KOR_LTE) || defined(CONFIG_DSDA_VIA_UART) || defined(CONFIG_MACH_KLTE_LTNDUOS)
+	pr_info("%s: session_id=%#x\n", __func__, session_id);
+	return voice_sec_set_dha_data(session_id,
+		dha_mode, dha_select, dha_param);
+#else
 	return voice_sec_set_dha_data(voc_get_session_id(VOICE_SESSION_NAME),
 		dha_mode, dha_select, dha_param);
 }
@@ -599,6 +630,14 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 	SOC_SINGLE_MULTI_EXT("Slowtalk Enable", SND_SOC_NOPM, 0, VSID_MAX, 0, 2,
 				msm_voice_slowtalk_get, msm_voice_slowtalk_put),
 #ifdef CONFIG_SEC_DHA_SOL_MAL
+#if defined(CONFIG_AUDIO_DUAL_CP) || defined(CONFIG_MACH_KLTE_CTC) \
+	|| defined(CONFIG_MACH_KLTE_CMCCDUOS) || defined(CONFIG_MACH_KLTE_CUDUOS) \
+	|| defined(CONFIG_MACH_MEGA23GEUR_OPEN) || defined(CONFIG_MACH_MS01_EUR_3G) \
+	|| defined(CONFIG_MACH_MEGA2LTE_KTT) || defined(CONFIG_MACH_ATLANTIC3GEUR_OPEN) \
+	|| defined(CONFIG_MACH_MS01_EUR_LTE) || defined(CONFIG_MACH_MS01_KOR_LTE) || defined(CONFIG_DSDA_VIA_UART) || defined(CONFIG_MACH_KLTE_LTNDUOS)
+	SOC_SINGLE_MULTI_EXT("Sec Set DHA data", SND_SOC_NOPM, 0, VSID_MAX, 0, 15,
+				msm_sec_dha_get, msm_sec_dha_put),
+#else
 	SOC_SINGLE_MULTI_EXT("Sec Set DHA data", SND_SOC_NOPM, 0, 65535, 0, 14,
 				msm_sec_dha_get, msm_sec_dha_put),
 #endif	/* CONFIG_SEC_DHA_SOL_MAL */

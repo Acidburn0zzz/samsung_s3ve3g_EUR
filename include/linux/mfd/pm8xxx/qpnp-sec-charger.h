@@ -75,7 +75,7 @@ struct sec_battery_data {
         unsigned int                    capacity_max;
         unsigned int                    capacity_max_margin;
         unsigned int                    capacity_min;
-	
+
 	unsigned int			ui_full_soc;
         unsigned int                    ui_full_current;	/* mA */
 	unsigned int                    ui_full_count;
