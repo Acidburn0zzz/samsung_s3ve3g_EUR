@@ -49,8 +49,6 @@
 atomic_t zswap_pool_pages = ATOMIC_INIT(0);
 /* The number of compressed pages currently stored in zswap */
 static atomic_t zswap_stored_pages = ATOMIC_INIT(0);
-
-#ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
 /* The number of outstanding pages awaiting writeback */
 static atomic_t zswap_outstanding_writebacks = ATOMIC_INIT(0);
 
