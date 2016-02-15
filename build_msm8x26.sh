@@ -7,7 +7,7 @@ BUILD_TOP_DIR=..
 BUILD_KERNEL_DIR=$(pwd)
 
 echo "Define YOUR OWN cross compile path"
-BUILD_CROSS_COMPILE=/media/lukag/UCompile/CM13/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin/arm-eabi-
+BUILD_CROSS_COMPILE=/home/lukag/DEV/sabermod/bin/arm-eabi-
 BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
 
 KERNEL_DEFCONFIG=msm8226-sec_defconfig
