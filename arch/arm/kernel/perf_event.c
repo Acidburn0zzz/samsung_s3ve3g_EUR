@@ -836,6 +836,7 @@ static int __cpuinit pmu_cpu_notify(struct notifier_block *b,
 					unsigned long action, void *hcpu)
 {
 	int irq;
+	struct pmu *pmu;
 
 	if (cpu_has_active_perf((int)hcpu)) {
 		switch ((action & ~CPU_TASKS_FROZEN)) {
