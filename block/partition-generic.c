@@ -280,7 +280,6 @@ void delete_partition(struct gendisk *disk, int partno)
 	__func__,MAJOR(dev->devt),MINOR(dev->devt),dev->kobj.name);
 #endif	
 	device_del(part_to_dev(part));
-	blk_free_devt(part_devt(part));
 
 	hd_struct_put(part);
 }
