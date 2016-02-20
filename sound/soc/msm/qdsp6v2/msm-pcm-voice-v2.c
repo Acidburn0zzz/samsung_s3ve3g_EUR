@@ -364,7 +364,7 @@ static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
 #ifdef CONFIG_SND_SOC_ES705
 int es705_put_veq_block(int volume);
 #endif
-#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+#if defined(CONFIG_SND_SOC_ES325) || defined (CONFIG_SND_SOC_ES325_ATLANTIC) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
 int es325_set_VEQ_max_gain(int volume);
 #endif
 static int msm_voice_gain_put(struct snd_kcontrol *kcontrol,
@@ -421,7 +421,7 @@ static int msm_voice_gain_put(struct snd_kcontrol *kcontrol,
 	es705_put_veq_block(volume);
 #endif
 #endif
-#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
+#if defined(CONFIG_SND_SOC_ES325) || defined (CONFIG_SND_SOC_ES325_ATLANTIC) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO) && !defined(CONFIG_SEC_JACTIVE_PROJECT)
 	es325_set_VEQ_max_gain(volume);
 #endif
 done:
@@ -604,6 +604,7 @@ static int msm_sec_dha_put(struct snd_kcontrol *kcontrol,
 #else
 	return voice_sec_set_dha_data(voc_get_session_id(VOICE_SESSION_NAME),
 		dha_mode, dha_select, dha_param);
+#endif
 }
 #endif /*CONFIG_SEC_DHA_SOL_MAL*/
 
@@ -640,6 +641,7 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 #else
 	SOC_SINGLE_MULTI_EXT("Sec Set DHA data", SND_SOC_NOPM, 0, 65535, 0, 14,
 				msm_sec_dha_get, msm_sec_dha_put),
+#endif
 #endif	/* CONFIG_SEC_DHA_SOL_MAL */
 	SOC_SINGLE_EXT("Loopback Enable", SND_SOC_NOPM, 0, 1, 0,
 				msm_loopback_get, msm_loopback_put),
@@ -756,3 +758,4 @@ module_exit(msm_soc_platform_exit);
 
 MODULE_DESCRIPTION("Voice PCM module platform driver");
 MODULE_LICENSE("GPL v2");
+
