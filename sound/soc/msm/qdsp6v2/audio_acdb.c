@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1151,13 +1151,6 @@ static int unmap_cal_tables(void)
 		result = result2;
 	}
 
-	result2 = q6lsm_unmap_cal_blocks();
-	if (result2 < 0) {
-		pr_err("%s: lsm_unmap_cal_blocks failed, err = %d\n",
-			__func__, result2);
-		result = result2;
-	}
-
 	result2 = q6asm_unmap_cal_blocks();
 	if (result2 < 0) {
 		pr_err("%s: asm_unmap_cal_blocks failed, err = %d\n",
@@ -1575,3 +1568,4 @@ module_exit(acdb_exit);
 
 MODULE_DESCRIPTION("SoC QDSP6v2 Audio ACDB driver");
 MODULE_LICENSE("GPL v2");
+

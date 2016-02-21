@@ -58,6 +58,9 @@ struct afe_ctl {
 	atomic_t mem_map_cal_handles[MAX_AFE_CAL_TYPES];
 	atomic_t mem_map_cal_index;
 	u16 dtmf_gen_rx_portid;
+#ifdef CONFIG_SND_SOC_MAXIM_DSM
+	struct afe_dsm_spkr_prot_calib_get_resp calib_data;
+#else
 	struct afe_spkr_prot_calib_get_resp calib_data;
 #endif /* CONFIG_SND_SOC_MAXIM_DSM */
 	int vi_tx_port;
@@ -143,6 +146,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 			   sizeof(this_afe.calib_data));
 		if (!this_afe.calib_data.status) {
 			atomic_set(&this_afe.state, 0);
+#ifndef CONFIG_SND_SOC_MAXIM_DSM
 			pr_err("%s rest %d state %x\n" , __func__
 			, this_afe.calib_data.res_cfg.r0_cali_q24,
 			this_afe.calib_data.res_cfg.th_vi_ca_state);
