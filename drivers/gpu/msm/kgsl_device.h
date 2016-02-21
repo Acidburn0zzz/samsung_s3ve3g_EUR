@@ -255,6 +255,7 @@ struct kgsl_device {
 	int open_count;
 
 	struct mutex mutex;
+	atomic64_t mutex_owner;
 	uint32_t state;
 	uint32_t requested_state;
 
@@ -707,6 +708,27 @@ void kgsl_cmdbatch_destroy(struct kgsl_cmdbatch *cmdbatch);
 void kgsl_cmdbatch_destroy_object(struct kref *kref);
 
 /**
+* kgsl_process_private_get() - increment the refcount on a kgsl_process_private
+*   struct
+* @process: Pointer to the KGSL process_private
+*
+* Returns 0 if the structure is invalid and a reference count could not be
+* obtained, nonzero otherwise.
+*/
+static inline int kgsl_process_private_get(struct kgsl_process_private *process)
+{
+	int ret = 0;
+	if (process != NULL)
+		ret = kref_get_unless_zero(&process->refcount);
+	return ret;
+}
+
+void kgsl_process_private_put(struct kgsl_process_private *private);
+
+
+struct kgsl_process_private *kgsl_process_private_find(pid_t pid);
+
+/**
  * kgsl_cmdbatch_put() - Decrement the refcount for a command batch object
  * @cmdbatch: Pointer to the command batch object
  */
@@ -717,7 +739,6 @@ static inline void kgsl_cmdbatch_put(struct kgsl_cmdbatch *cmdbatch)
 }
 
 /**
-
  * kgsl_sysfs_store() - parse a string from a sysfs store function
  * @buf: Incoming string to parse
  * @ptr: Pointer to an unsigned int to store the value
@@ -768,3 +789,4 @@ static inline void kgsl_mutex_unlock(struct mutex *mutex, atomic64_t *owner)
 	mutex_unlock(mutex);
 }
 #endif  /* __KGSL_DEVICE_H */
+

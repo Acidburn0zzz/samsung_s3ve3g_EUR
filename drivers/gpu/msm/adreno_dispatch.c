@@ -250,9 +250,9 @@ static inline int adreno_dispatcher_requeue_cmdbatch(
 		spin_unlock(&drawctxt->lock);
 		device = cmdbatch->device;
 		/* get rid of this cmdbatch since the context is bad */
-		mutex_lock(&device->mutex, &device->mutex_owner);
+		kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 		kgsl_cmdbatch_destroy(cmdbatch);
-		mutex_unlock(&device->mutex, &device->mutex_owner);
+		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 		return -EINVAL;
 	}
 

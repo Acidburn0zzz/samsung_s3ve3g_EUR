@@ -21,7 +21,6 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/highmem.h>
 #include <linux/vmalloc.h>
 #include <linux/swap.h>
 #include "ion_priv.h"
@@ -210,3 +209,4 @@ static void __exit ion_page_pool_exit(void)
 
 module_init(ion_page_pool_init);
 module_exit(ion_page_pool_exit);
+

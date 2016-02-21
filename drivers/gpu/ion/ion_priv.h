@@ -358,8 +358,6 @@ void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
  * @gfp_mask:		gfp_mask to use from alloc
  * @order:		order of pages in the pool
  * @list:		plist node for list of pools
- * @should_invalidate:	whether or not the cache needs to be invalidated at
- *			page allocation time.
  *
  * Allows you to keep a pool of pre allocated pages to use from your heap.
  * Keeping a pool of pages that is ready for dma, ie any cached mapping have
@@ -401,3 +399,4 @@ struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
 int ion_handle_put(struct ion_handle *handle);
 
 #endif /* _ION_PRIV_H */
+

@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -267,7 +267,7 @@ static void adreno_input_work(struct work_struct *work)
 			struct adreno_device, input_work);
 	struct kgsl_device *device = &adreno_dev->dev;
 
-	mutex_lock(&device->mutex);
+	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
 
 	device->flags |= KGSL_FLAG_WAKE_ON_TOUCH;
 
@@ -285,7 +285,7 @@ static void adreno_input_work(struct work_struct *work)
 	 */
 	mod_timer(&device->idle_timer,
 		jiffies + msecs_to_jiffies(_wake_timeout));
-	mutex_unlock(&device->mutex);
+	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
 }
 
 /*
@@ -1660,17 +1660,19 @@ static int adreno_of_get_iommu(struct device_node *parent,
 			goto err;
 		}
 
-		ret = of_property_read_u32_array(child, "reg", reg_val, 2);
-		if (ret) {
-			KGSL_CORE_ERR("Unable to read KGSL IOMMU 'reg'\n");
+		if (!strcmp("gfx3d_user", ctxs[ctx_index].iommu_ctx_name)) {
+			ctxs[ctx_index].ctx_id = 0;
+		} else if (!strcmp("gfx3d_priv",
+					ctxs[ctx_index].iommu_ctx_name)) {
+			ctxs[ctx_index].ctx_id = 1;
+		} else if (!strcmp("gfx3d_spare",
+					ctxs[ctx_index].iommu_ctx_name)) {
+			ctxs[ctx_index].ctx_id = 2;
+		} else {
+			KGSL_CORE_ERR("dt: IOMMU context %s is invalid\n",
+				ctxs[ctx_index].iommu_ctx_name);
 			goto err;
 		}
-		if (msm_soc_version_supports_iommu_v0())
-			ctxs[ctx_index].ctx_id = (reg_val[0] -
-				data->physstart) >> KGSL_IOMMU_CTX_SHIFT;
-		else
-			ctxs[ctx_index].ctx_id = ((reg_val[0] -
-				data->physstart) >> KGSL_IOMMU_CTX_SHIFT) - 8;
 
 		ctx_index++;
 	}
@@ -1724,6 +1726,12 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 	ret = adreno_of_get_pwrlevels(pdev->dev.of_node, pdata);
 	if (ret)
 		goto err;
+
+	/* get pm-qos-latency from target, set it to default if not found */
+	/*if (adreno_of_read_property(pdev->dev.of_node, "qcom,pm-qos-latency",
+		&pdata->pm_qos_latency))
+		pdata->pm_qos_latency = 501;*/
+
 
 	if (adreno_of_read_property(pdev->dev.of_node, "qcom,idle-timeout",
 		&pdata->idle_timeout))
@@ -1983,6 +1991,10 @@ static int adreno_init(struct kgsl_device *device)
 						ADRENO_REG_CP_IB2_BUFSZ);
 	for (i = 6; i < FT_DETECT_REGS_COUNT; i++)
 		ft_detect_regs[i] = 0;
+
+	/* turn on hang interrupt for a330v2 by default */
+	if (adreno_is_a330v2(adreno_dev))
+		set_bit(ADRENO_DEVICE_HANG_INTR, &adreno_dev->priv);
 
 	ret = adreno_perfcounter_init(device);
 	if (ret)
@@ -2607,6 +2619,7 @@ FT_DEVICE_ATTR(ft_policy);
 FT_DEVICE_ATTR(ft_pagefault_policy);
 FT_DEVICE_ATTR(ft_fast_hang_detect);
 FT_DEVICE_ATTR(ft_long_ib_detect);
+FT_DEVICE_ATTR(ft_hang_intr_status);
 
 static DEVICE_INT_ATTR(wake_nice, 0644, _wake_nice);
 static FT_DEVICE_ATTR(wake_timeout);
@@ -2618,6 +2631,7 @@ const struct device_attribute *ft_attr_list[] = {
 	&dev_attr_ft_long_ib_detect,
 	&dev_attr_wake_nice.attr,
 	&dev_attr_wake_timeout,
+	&dev_attr_ft_hang_intr_status,
 	NULL,
 };
 
@@ -2858,7 +2872,7 @@ static int adreno_setproperty(struct kgsl_device_private *dev_priv,
  * Return true if the RBBM status register for the GPU type indicates that the
  * hardware is idle
  */
-static bool adreno_hw_isidle(struct kgsl_device *device)
+bool adreno_hw_isidle(struct kgsl_device *device)
 {
 	unsigned int reg_rbbm_status;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
@@ -2970,6 +2984,12 @@ bool adreno_isidle(struct kgsl_device *device)
 		return true;
 
 	rptr = adreno_get_rptr(&adreno_dev->ringbuffer);
+
+	/*
+	 * wptr is updated when we add commands to ringbuffer, add a barrier
+	 * to make sure updated wptr is compared to rptr
+	 */
+	smp_mb();
 
 	if (rptr == adreno_dev->ringbuffer.wptr)
 		return adreno_hw_isidle(device);
@@ -3091,15 +3111,30 @@ struct kgsl_memdesc *adreno_find_ctxtmem(struct kgsl_device *device,
 	return desc;
 }
 
+/*
+ * adreno_find_region() - Find corresponding allocation for a given address
+ * @device: Device on which address operates
+ * @pt_base: The pagetable in which address is mapped
+ * @gpuaddr: The gpu address
+ * @size: Size in bytes of the address
+ * @entry: If the allocation is part of user space allocation then the mem
+ * entry is returned in this parameter. Caller is supposed to decrement
+ * refcount on this entry after its done using it.
+ *
+ * Finds an allocation descriptor for a given gpu address range
+ *
+ * Returns the descriptor on success else NULL
+ */
 struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 						phys_addr_t pt_base,
 						unsigned int gpuaddr,
-						unsigned int size)
+						unsigned int size,
+						struct kgsl_mem_entry **entry)
 {
-	struct kgsl_mem_entry *entry;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *ringbuffer = &adreno_dev->ringbuffer;
 
+	*entry = NULL;
 	if (kgsl_gpuaddr_in_memdesc(&ringbuffer->buffer_desc, gpuaddr, size))
 		return &ringbuffer->buffer_desc;
 
@@ -3113,20 +3148,33 @@ struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 					size))
 		return &device->mmu.setstate_memory;
 
-	entry = kgsl_get_mem_entry(device, pt_base, gpuaddr, size);
+	*entry = kgsl_get_mem_entry(device, pt_base, gpuaddr, size);
 
-	if (entry)
-		return &entry->memdesc;
+	if (*entry)
+		return &((*entry)->memdesc);
 
 	return adreno_find_ctxtmem(device, pt_base, gpuaddr, size);
 }
 
+/*
+ * adreno_convertaddr() - Convert a gpu address to kernel mapped address
+ * @device: Device on which the address operates
+ * @pt_base: The pagetable in which address is mapped
+ * @gpuaddr: The start address
+ * @size: The length of address range
+ * @entry: If the allocation is part of user space allocation then the mem
+ * entry is returned in this parameter. Caller is supposed to decrement
+ * refcount on this entry after its done using it.
+ *
+ * Returns the converted host pointer on success else NULL
+ */
 uint8_t *adreno_convertaddr(struct kgsl_device *device, phys_addr_t pt_base,
-			    unsigned int gpuaddr, unsigned int size)
+			    unsigned int gpuaddr, unsigned int size,
+				struct kgsl_mem_entry **entry)
 {
 	struct kgsl_memdesc *memdesc;
 
-	memdesc = adreno_find_region(device, pt_base, gpuaddr, size);
+	memdesc = adreno_find_region(device, pt_base, gpuaddr, size, entry);
 
 	return memdesc ? kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr) : NULL;
 }
@@ -3486,3 +3534,4 @@ MODULE_DESCRIPTION("3D Graphics driver");
 MODULE_VERSION("1.2");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:kgsl_3d");
+
